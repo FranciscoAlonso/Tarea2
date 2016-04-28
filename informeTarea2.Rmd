@@ -5,19 +5,82 @@ date: "April 27, 2016"
 output: pdf_document
 ---
 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+  library(foreign)
+  library(caret)
+  library(PerformanceAnalytics)
+  library(dplyr)
+  library(class)
+```
+
 #Ejercicio 1
 
-Se aplica el proceso de minería de de datos sobre el conjunto de datos "SEISMIC-BUMPS", en este están clasificados eventos en minas según si en el siguente estado ocurrió o no un movimiento sísmico con mucha energía, este se clasifica como "estado peligroso" (1) o "estado no peligroso" (0).
+Se aplica el proceso de minería de de datos sobre el conjunto de datos "SEISMIC-BUMPS", en este están clasificados eventos en minas según si en el siguente estado ocurrió o no un movimiento sísmico con mucha energía, este se clasifica como "estado peligroso" (1) o "estado no peligroso" (0) según un conjunto de 13 variables correspondientes a mediciones de energía en movimientos sísmicos y otras 5 que indican, en general, el nivel de peligrosidad de los movimientos ya ocurridos.
 
+Se prepara la data para la creación del modelo, es necesario que las variables nominales sean convertidas a valores numéricos, luego se divide el conjunto de datos en un conjunto de entrenamiento y uno de prueba para construir nueve modelos usando el algoritmo k-vecinos más cercanos (k nearest neighborgs - knn) variando el número de grupos de dos a diez. Por último se toman medidas del error de predicción y g-medias para comparar cada modelo construido.
 
-
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+  seismic <- read.arff(file = "seismic-bumps.arff")
+  seismic2 <- seismic
+  seismic2$seismic <- as.integer(seismic$seismic)
+  seismic2$seismoacoustic <- as.integer(seismic$seismoacoustic)
+  seismic2$shift <- as.integer(seismic$shift)
+  seismic2$ghazard <- as.integer(seismic$ghazard)
+  seismic2$class<- as.integer(seismic$class)
+  
+  smp_size <- floor(0.75 * nrow(seismic))
+  set.seed(42)
+  train_ind <- sample(seq_len(nrow(seismic)), size = smp_size)
+  seismicTrain <- seismic2[train_ind, ]
+  seismicTest <- seismic2[-train_ind, ]
+  
+  models <- c()
+  geoMeans <- c()
+  errors <- c()
+  
+  for(i in 2:10)
+  {
+    m <- knn(train = seismicTrain, test = seismicTest, cl = seismicTrain$class, k = i)
+    models <- cbind(models, m)
+    cm <- confusionMatrix(m, seismicTest$class)
+    geoMeans <- c(geoMeans, mean.geometric(cm$byClass))
+    errors <- c(errors, ((cm$table[2]+cm$table[3])/sum(cm$table)) )
+  }
+  plot(2:10, errors, main = "Error de predicción para cada valor K", ylim = c(0.0, 0.15), xlab = "Valores de K", ylab = "Error de predicción")
+  plot(2:10, geoMeans, main = "G-medias para cada valor K", ylim = c(0.5, 0.7), xlab = "Valores de K", ylab = "G-medias")
 
 ```
 
-
+Se observa que el error de predicción se reduce al usar k = 9, sin embargo dado que esta métrica es susceptible al sesgo entre clases y observamos que las clases no están bien representadas en el conjunsto de datos, nos referimos al valor de g-medias para determinar que el valor de k apropiado es cuatro.
 
 ```{r, echo=FALSE}
-
+  summary(seismic$class)
+  plot(x = seismic$class, xlab = "Clase", ylab = "frecuencia", ylim = c(0,3000))
 ```
+
+
+#Ejercicio 2
+
+Se aplica el proceso de minerá de datos para construir un modelo descriptivo basado en agrupación sobre el conjunto de datos "WHOLESALE CUSTOMERS" para determinar patrones de compra de clientes. 
+
+El conjunto de datos contiene algunos outliers que pueden afectar el resultado del algoritmo k-medias, en la etapa de limpieza se procede a eliminar estos clientes. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  salesCostumers <- read.csv("Wholesale customers data.csv")
+    idx.to.remove <-integer(0) 
+  for (c in 3:8){ 
+    col.order <-order(salesCostumers[,c],decreasing=T) 
+    idx <-head(col.order, 5) 
+    idx.to.remove <-union(idx.to.remove,idx)
+  }
+  
+  length(idx.to.remove) 
+  salesCostumers[idx.to.remove,] 
+  data.rm.top<-salesCostumers[-c(idx.to.remove),] 
+  
+  set.seed(42)
+  
+  
+```
+
 
