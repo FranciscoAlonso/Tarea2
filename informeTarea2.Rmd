@@ -1,0 +1,23 @@
+---
+title: "Tarea 2"
+author: "Francisco Alonso"
+date: "April 27, 2016"
+output: pdf_document
+---
+
+#Ejercicio 1
+
+Se aplica el proceso de minería de de datos sobre el conjunto de datos "SEISMIC-BUMPS", en este están clasificados eventos en minas según si en el siguente estado ocurrió o no un movimiento sísmico con mucha energía, este se clasifica como "estado peligroso" (1) o "estado no peligroso" (0).
+
+
+
+```{r}
+
+```
+
+
+
+```{r, echo=FALSE}
+
+```
+
