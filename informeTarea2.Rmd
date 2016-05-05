@@ -11,6 +11,7 @@ output: pdf_document
   library(PerformanceAnalytics)
   library(dplyr)
   library(class)
+  library(arules)
 ```
 
 #Ejercicio 1
@@ -53,7 +54,7 @@ Se prepara la data para la creación del modelo, es necesario que las variables n
 
 Se observa que el error de predicción se reduce al usar k = 9, sin embargo dado que esta métrica es susceptible al sesgo entre clases y observamos que las clases no están bien representadas en el conjunsto de datos, nos referimos al valor de g-medias para determinar que el valor de k apropiado es cuatro.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.height=5}
   summary(seismic$class)
   plot(x = seismic$class, xlab = "Clase", ylab = "frecuencia", ylim = c(0,3000))
 ```
@@ -61,7 +62,7 @@ Se observa que el error de predicción se reduce al usar k = 9, sin embargo dado 
 
 #Ejercicio 2
 
-Se aplica el proceso de minerá de datos para construir un modelo descriptivo basado en agrupación sobre el conjunto de datos "WHOLESALE CUSTOMERS" para determinar patrones de compra de clientes. 
+Se aplica el proceso de minería de datos para construir un modelo descriptivo basado en agrupación sobre el conjunto de datos "WHOLESALE CUSTOMERS" para determinar patrones de compra de clientes. 
 
 El conjunto de datos contiene algunos outliers que pueden afectar el resultado del algoritmo k-medias, en la etapa de limpieza se procede a eliminar estos clientes. Además es necesario eliminar los atributos "Channel" y "Region" ya que funcionan como identificadores y no son útiles para la agrupación.
 
@@ -84,7 +85,7 @@ El conjunto de datos contiene algunos outliers que pueden afectar el resultado d
 
 Para validar el modelo se observan, para varios modelos con distintos valores de k y varias repeticiones, la suma del cuadrado de las distancias entre los elementos de los grupos y los centros (withinss) y la suma del cuadrado de las distancias entre los centros de los grupos (betweenss).
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=4}
 kvalues<-2:20 
 tries <- 100 
 avgTotalWithinss <- integer(length(kvalues)) #Set up an empty vector to hold all of points
@@ -125,11 +126,47 @@ De las características observadas en cada grupo podemos observar lo siguiente pa
 - Grupo 4: Mantiene un consumo medio o bajo en todas las categorías, exceptuando la de productos congelados en donde presentan un mayor consumo respecto a las demás categorías. 
 - Grupo 5: Tiene el mayor consumo de productos frescos y congelados.
 
+#Ejercicio 3
 
+Se aplica el proceso de minería de datos sobre el conjunto de de datos "Bank Marketing" con el fin de realizar un análisis de asociación para encontrar asociaciones frecuentes que caractericen a los clientes que podrían subscribirse o no a los servicios de depósitos bancarios. Se utilizó un umbral para el soporte de 70% y una confianza de 80%. 
 
+Luego de cargar el conjunto de datos, es necesario discretizar las variables "age", "duration", "campaign", "pdays", "previous", "emp.var.rate", "cons.price.idx", "cons.conf.idx", "euribor3m", "nr.employed".
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  bank <- read.csv("bank-marketing.csv", sep = ";")
+  bankDiscrete <- bank
+  bankDiscrete$age <- discretize(bank$age, method = "cluster", categories = 10)
+  bankDiscrete$duration <- discretize(bank$duration, method = "cluster", categories = 10)
+  bankDiscrete$campaign <- discretize(bank$campaign, method = "cluster", categories = 10)
+  bankDiscrete$pdays <- discretize(bank$pdays, method = "cluster", categories = 10)
+  bankDiscrete$previous <- discretize(bank$previous, method = "cluster", categories = 5)
+  bankDiscrete$emp.var.rate <- discretize(bank$emp.var.rate, method = "cluster", categories = 10)
+  bankDiscrete$cons.price.idx <- discretize(bank$cons.price.idx, method = "cluster", categories = 10)
+  bankDiscrete$cons.conf.idx <- discretize(bank$cons.conf.idx, method = "cluster", categories = 10)
+  bankDiscrete$euribor3m <- discretize(bank$euribor3m, method = "cluster", categories = 10)
+  bankDiscrete$nr.employed <- discretize(bank$nr.employed, method = "cluster", categories = 10)
+  
+model3 <- apriori(data = bankDiscrete, parameter = list(supp = 0.7, conf = 0.8), appearance = list(rhs=c("y=no", "y=yes"), default="lhs"), control = list(verbose = F))
+```
 
+Despues de construir el modelo se eliminan las reglas redundantes y con valor lift menor a 1.
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+rules.sorted <- sort(model3, by="lift")
+subset.matrix <- is.subset(rules.sorted, rules.sorted)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+redundant <- colSums(subset.matrix, na.rm=T) >= 1
+rules.pruned <- rules.sorted[!redundant]
+inspect(rules.pruned)
+```
+
+Según las reglas obtenidas del modelo, las variables tomadas en cuenta son:
+
+- pdays: representa el número de días desde que el cliente fue contactado en la última campaña, si este valor está en el intervalo [507.95,999.00] (999.00 quiere decir que el cliente no fue contactado anteriormente) el cliente no se subscribe al servicio. 
+
+- poutcome: Si no existe un resultado de la campaña anterior, lo que indica que el cliente pudo no haber sido contactado, el cliente no se subscribe al servicio.
+
+- previous: si el número de contactos previos está entre cero y 1.18 el cliente de se subscribe al servicio.
 
 
 
