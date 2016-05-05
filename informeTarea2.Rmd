@@ -63,24 +63,76 @@ Se observa que el error de predicción se reduce al usar k = 9, sin embargo dado 
 
 Se aplica el proceso de minerá de datos para construir un modelo descriptivo basado en agrupación sobre el conjunto de datos "WHOLESALE CUSTOMERS" para determinar patrones de compra de clientes. 
 
-El conjunto de datos contiene algunos outliers que pueden afectar el resultado del algoritmo k-medias, en la etapa de limpieza se procede a eliminar estos clientes. 
+El conjunto de datos contiene algunos outliers que pueden afectar el resultado del algoritmo k-medias, en la etapa de limpieza se procede a eliminar estos clientes. Además es necesario eliminar los atributos "Channel" y "Region" ya que funcionan como identificadores y no son útiles para la agrupación.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
   salesCostumers <- read.csv("Wholesale customers data.csv")
-    idx.to.remove <-integer(0) 
+  idx.to.remove <-integer(0) 
   for (c in 3:8){ 
     col.order <-order(salesCostumers[,c],decreasing=T) 
     idx <-head(col.order, 5) 
     idx.to.remove <-union(idx.to.remove,idx)
   }
   
-  length(idx.to.remove) 
-  salesCostumers[idx.to.remove,] 
+  #length(idx.to.remove) 
+  #salesCostumers[idx.to.remove,] 
   data.rm.top<-salesCostumers[-c(idx.to.remove),] 
   
   set.seed(42)
-  
-  
+  k <-kmeans(data.rm.top[,-c(1,2)], centers=5)
 ```
+
+Para validar el modelo se observan, para varios modelos con distintos valores de k y varias repeticiones, la suma del cuadrado de las distancias entre los elementos de los grupos y los centros (withinss) y la suma del cuadrado de las distancias entre los centros de los grupos (betweenss).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+kvalues<-2:20 
+tries <- 100 
+avgTotalWithinss <- integer(length(kvalues)) #Set up an empty vector to hold all of points
+avgTotalBetweenss <- integer(length(kvalues))
+for(v in kvalues){ # For each value of the range variable
+    totalWithinss <- integer(tries) #Set up an empty vector to hold the 100 tries
+    totalBetweenss <- integer(tries)
+    for(i in 1:tries){
+        kMeansHelper <- kmeans(data.rm.top,centers=v) #Run kmeans
+        totalWithinss[i] <- kMeansHelper$tot.withinss #Store the total withinss
+        totalBetweenss[i] <- kMeansHelper$betweenss
+    }
+    avgTotalWithinss[v-1] <- mean(totalWithinss) #Average the 100 total withinss
+    avgTotalBetweenss[v-1] <- mean(totalBetweenss)
+}
+plot(kvalues,avgTotalWithinss, type="b", main="Total de withinss para varios K",
+     ylab="Promedio total de withinss",
+     xlab="Valor de K")
+plot(kvalues,avgTotalBetweenss, type="b", main="Total de betweenss para varios K",
+     ylab="Promedio total de betweenss",
+     xlab="Valor de K")
+```
+
+Se observa en los gráficos que a partir de 5 grupos la ganancia en las distancias se reduce lo suficiente como para seleccionar este valor de K.
+
+Luego se construye el modelo usando el algoritmo K-Means con k igual a 5 y a continuación se muestran los centros de cada uno de los cinco grupos creados y el número de clientes en cada grupo.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+  print(k$centers) #cluster centers
+  print(table(k$cluster)) #Give a count of data points in each cluster
+```
+
+De las características observadas en cada grupo podemos observar lo siguiente para cada uno de estos:
+
+- Grupo 1: Tiene un consumo alto de productos frescos y un consumo medio del resto de las categorías.
+- Grupo 2: Tiene un alto consumo de productos lácteos, enlatados, detergentes y delicateses, mientras mantienen un consumo medio en las demás categorías.
+- Grupo 3: Tienen un consumo medio en comparación con el resto de los grupos en todas las categorías.
+- Grupo 4: Mantiene un consumo medio o bajo en todas las categorías, exceptuando la de productos congelados en donde presentan un mayor consumo respecto a las demás categorías. 
+- Grupo 5: Tiene el mayor consumo de productos frescos y congelados.
+
+
+
+
+
+
+
+
+
+
 
 
